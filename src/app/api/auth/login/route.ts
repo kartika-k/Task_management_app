@@ -27,6 +27,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check database connection
+    if (!process.env.DATABASE_URL) {
+      console.error("DATABASE_URL is not set");
+      return NextResponse.json(
+        { error: "Server configuration error" },
+        { status: 500 }
+      );
+    }
+
     const user = await prisma.user.findUnique({
       where: { email: parsed.data.email.toLowerCase() },
     });
@@ -66,8 +75,16 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     console.error("Failed to log in:", error);
+    
+    // Provide more detailed error information in development
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const isDevelopment = process.env.NODE_ENV === "development";
+    
     return NextResponse.json(
-      { error: "Failed to log in" },
+      { 
+        error: "Failed to log in",
+        ...(isDevelopment && { details: errorMessage })
+      },
       { status: 500 }
     );
   }

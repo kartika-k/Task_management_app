@@ -1,9 +1,13 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-const prismaClientOptions = {
-  log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+// Type-safe Prisma client options
+const prismaClientOptions: Prisma.PrismaClientOptions = {
+  log:
+    process.env.NODE_ENV === "development"
+      ? ["query", "error", "warn"] 
+      : ["error"],
   datasources: {
     db: {
       url: process.env.DATABASE_URL,
@@ -19,7 +23,7 @@ if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
-// Handle graceful shutdown
+// Graceful shutdown
 if (process.env.NODE_ENV === "production") {
   process.on("beforeExit", async () => {
     await prisma.$disconnect();

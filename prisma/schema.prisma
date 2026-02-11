@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  role         UserRole @default(EDITOR)
+
+  passwordResetOtp       String?  @db.VarChar(64)
+  passwordResetExpires   DateTime?
+
+  projects Project[] @relation("UserProjects")
+  updatedAt DateTime @updatedAt
+
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime      @default(now()) @map("created_at")
+  ownerId     String        @map("owner_id")
+  owner       User          @relation("UserProjects", fields: [ownerId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  activityLog ActivityLog[]
+
+  @@index([ownerId])
+  @@map("projects")
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  projectId   String     @map("project_id")
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  dueDate     DateTime?  @map("due_date")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([createdAt])
+  @@index([projectId, status])
+  @@index([projectId, priority])
+  @@map("tasks")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  projectId String   @map("project_id")
+  taskId    String?  @map("task_id")
+  action    String
+  message   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@map("activity_log")
+}
+
+enum TaskStatus {
+  TODO       @map("todo")
+  IN_PROGRESS @map("in_progress")
+  DONE       @map("done")
+}
+
+enum Priority {
+  LOW    @map("low")
+  MEDIUM @map("medium")
+  HIGH   @map("high")
+}
+
+enum UserRole {
+  READ_ONLY @map("read_only")
+  EDITOR    @map("editor")
+}

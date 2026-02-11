@@ -119,18 +119,19 @@ npm run dev
 ```
 ### Dashboard
 
-Open <img width="1897" height="828" alt="image" src="https://github.com/user-attachments/assets/f4adb974-31b4-4fe1-afd0-d2afb58c88ee" /> with your browser to see the result.
+Open <img width="1890" height="815" alt="image" src="https://github.com/user-attachments/assets/091f96d1-acee-4dd5-87be-824a3162a96f" /> with your browser to see the result.
+
+<img width="1895" height="813" alt="image" src="https://github.com/user-attachments/assets/963fcb74-cce1-424c-81e2-5112ff67c916" />
 
 ### Project View
-<img width="1905" height="833" alt="image" src="https://github.com/user-attachments/assets/fd7ac00e-d7e3-4783-b71d-d68af39d22b7" />
+<img width="1919" height="821" alt="image" src="https://github.com/user-attachments/assets/fff4f963-cc45-4346-9335-139b8dbe8d2a" />
 
-<img width="1919" height="797" alt="image" src="https://github.com/user-attachments/assets/e47f75a7-40a9-41f8-8317-0f02ea0b6ca7" />
+<img width="1906" height="828" alt="image" src="https://github.com/user-attachments/assets/edf14cf9-86ec-4d84-a3f1-89883fce6601" />
 
-<img width="1900" height="816" alt="image" src="https://github.com/user-attachments/assets/935bbf7b-c9ce-4d6e-8d3c-62304816119b" />
+<img width="1513" height="832" alt="image" src="https://github.com/user-attachments/assets/70711cb9-37e2-4142-935c-11bc110982e1" />
 
 ### Audit Activity
-<img width="1917" height="826" alt="image" src="https://github.com/user-attachments/assets/3d5bf984-99c6-4f47-9c6b-96cab30895e5" />
-
+<img width="1899" height="822" alt="image" src="https://github.com/user-attachments/assets/63277922-69e7-4a84-883c-c0c4472ee950" />
 
 ## Features
 
@@ -160,4 +161,5 @@ Open <img width="1897" height="828" alt="image" src="https://github.com/user-att
 
 The app can be deployed to:
 - Vercel (Frontend)
+- Neon (PostgreSQL)
 

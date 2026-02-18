@@ -28,47 +28,46 @@ export default function ActivityPage() {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-          Activity
+    <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Activity log
+          </h1>
         </div>
-        <h1 className="text-2xl font-semibold text-slate-50">
-          Activity log
-        </h1>
-      </div>
 
-      <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-6">
         {loading && (
-          <div className="text-sm text-slate-400">Loading activity...</div>
+          <div className="text-sm text-gray-500 py-8">Loading activity...</div>
         )}
 
         {error && !loading && (
-          <div className="text-sm text-danger">{error}</div>
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
+            {error}
+          </div>
         )}
 
         {!loading && !error && items.length === 0 && (
-          <div className="text-sm text-slate-400">No recent activity yet.</div>
+          <div className="text-sm text-gray-500 py-8">No recent activity yet.</div>
         )}
 
         {!loading && !error && items.length > 0 && (
-          <ul className="divide-y divide-slate-800">
+          <ul className="divide-y divide-gray-200">
             {items.map((entry) => (
               <li
                 key={entry.id}
-                className="py-3 flex items-start justify-between gap-4"
+                className="py-4 flex items-start justify-between gap-4"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-slate-100">
+                  <div className="text-sm text-gray-900">
                     {entry.message}
                   </div>
-                  <div className="mt-1 text-xs text-slate-500 flex items-center gap-2 flex-wrap">
+                  <div className="mt-1 text-xs text-gray-500 flex items-center gap-2 flex-wrap">
                     {entry.projectName && (
                       <Link
                         href={`/projects/${entry.projectId}`}
-                        className="inline-flex items-center gap-1 text-sky-300 hover:text-sky-200"
+                        className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-700"
                       >
-                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />
+                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-teal-600" />
                         <span>{entry.projectName}</span>
                       </Link>
                     )}

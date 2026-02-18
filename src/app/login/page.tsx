@@ -62,16 +62,16 @@ export default function LoginPage() {
             required
           />
         </div>
-        <div className="flex justify-between items-center text-xs">
+        <div className="flex justify-between items-center text-sm">
           <span className="auth-link">
             New here?{" "}
-            <Link href="/register" className="text-sky-400 hover:underline">
+            <Link href="/register">
               Create account
             </Link>
           </span>
           <Link
             href="/forgot-password"
-            className="text-sky-400 hover:underline"
+            className="text-teal-600 hover:underline"
           >
             Forgot password?
           </Link>

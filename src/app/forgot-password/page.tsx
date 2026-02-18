@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -63,13 +64,12 @@ export default function ForgotPasswordPage() {
           {loading ? "Sending..." : "Send reset link"}
         </button>
       </form>
-      <button
-        type="button"
-        onClick={() => router.push("/login")}
-        className="auth-link mt-4"
+      <Link
+        href="/login"
+        className="auth-link mt-4 block text-center"
       >
         Back to login
-      </button>
+      </Link>
     </div>
   );
 }

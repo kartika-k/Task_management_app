@@ -76,7 +76,7 @@ export default function RegisterPage() {
       </form>
       <p className="auth-link mt-4">
         Already have an account?{" "}
-        <Link href="/login" className="text-sky-400 hover:underline">
+        <Link href="/login">
           Sign in
         </Link>
       </p>

@@ -1,38 +1,34 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Project, Task, PaginatedTasks } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
-import TaskFilters from "@/components/TaskFilters";
+import ProjectModal from "@/components/ProjectModal";
 import ActivityLog from "@/components/ActivityLog";
 
 interface Filters {
-  status: string[];
-  priority: string[];
+  status: string;
+  priority: string;
   sortBy: string;
-  sortOrder: string;
-  search: string;
 }
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [tasksPage, setTasksPage] = useState(1);
-  const [tasksTotal, setTasksTotal] = useState(0);
-  const pageSize = 10;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [projectModalOpen, setProjectModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filters, setFilters] = useState<Filters>({
-    status: [],
-    priority: [],
+    status: "All",
+    priority: "All",
     sortBy: "createdAt",
-    sortOrder: "desc",
-    search: "",
   });
 
   const fetchProject = useCallback(async () => {
@@ -49,15 +45,10 @@ export default function ProjectDetailPage() {
   const fetchTasks = useCallback(async () => {
     try {
       const params = new URLSearchParams();
-      if (filters.status.length > 0)
-        params.set("status", filters.status.join(","));
-      if (filters.priority.length > 0)
-        params.set("priority", filters.priority.join(","));
-      if (filters.sortBy) params.set("sortBy", filters.sortBy);
-      if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
-      params.set("page", String(tasksPage));
-      params.set("pageSize", String(pageSize));
-      if (filters.search) params.set("search", filters.search);
+      if (filters.status !== "All") params.set("status", filters.status);
+      if (filters.priority !== "All") params.set("priority", filters.priority);
+      params.set("sortBy", filters.sortBy);
+      params.set("sortOrder", "desc");
 
       const res = await fetch(`/api/projects/${id}/tasks?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch tasks");
@@ -67,19 +58,13 @@ export default function ProjectDetailPage() {
         : ((data as unknown as any) as Task[]);
       if (Array.isArray(items)) {
         setTasks(items);
-        if (!Array.isArray(data as unknown as any)) {
-          setTasksTotal((data as PaginatedTasks).total ?? items.length);
-        } else {
-          setTasksTotal(items.length);
-        }
       } else {
         setTasks([]);
-        setTasksTotal(0);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load tasks");
     }
-  }, [id, filters, tasksPage]);
+  }, [id, filters]);
 
   useEffect(() => {
     const load = async () => {
@@ -94,33 +79,26 @@ export default function ProjectDetailPage() {
     if (project) fetchTasks();
   }, [project, fetchTasks]);
 
-  const totalPages = Math.max(1, Math.ceil(tasksTotal / pageSize));
-
   const handleDeleteTask = async (taskId: string) => {
-    if (!confirm("Delete this task?")) return;
     try {
       const res = await fetch(`/api/projects/${id}/tasks/${taskId}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete task");
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      fetchTasks();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete task");
     }
   };
 
-  const handleStatusChange = async (taskId: string, status: Task["status"]) => {
+  const handleDeleteProject = async () => {
     try {
-      const res = await fetch(`/api/projects/${id}/tasks/${taskId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error("Failed to update task");
-      const updated = await res.json();
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+      const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete project");
+      router.push("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update task");
+      setError(err instanceof Error ? err.message : "Failed to delete project");
+      setDeleteConfirmOpen(false);
     }
   };
 
@@ -130,10 +108,15 @@ export default function ProjectDetailPage() {
     fetchTasks();
   };
 
+  const handleProjectSaved = () => {
+    setProjectModalOpen(false);
+    fetchProject();
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="text-muted">Loading project...</div>
+        <div className="text-white">Loading project...</div>
       </div>
     );
   }
@@ -141,27 +124,30 @@ export default function ProjectDetailPage() {
   if (!project) {
     return (
       <div className="text-center py-20">
-        <p className="text-danger text-lg mb-4">Project not found</p>
-        <Link href="/" className="text-primary hover:underline">
+        <p className="text-red-500 text-lg mb-4">Project not found</p>
+        <Link href="/" className="text-white hover:underline">
           Back to projects
         </Link>
       </div>
     );
   }
 
-  const todoCount = tasks.filter((t) => t.status === "TODO").length;
-  const inProgressCount = tasks.filter(
-    (t) => t.status === "IN_PROGRESS"
-  ).length;
-  const doneCount = tasks.filter((t) => t.status === "DONE").length;
-  const totalForBars = Math.max(1, todoCount + inProgressCount + doneCount);
+  const statusBadgeClasses: Record<Task["status"], string> = {
+    TODO: "bg-orange-100 text-orange-800 border border-orange-300",
+    IN_PROGRESS: "bg-blue-100 text-blue-800 border border-blue-300",
+    DONE: "bg-green-100 text-green-800 border border-green-300",
+  };
+
+  const statusLabels: Record<Task["status"], string> = {
+    TODO: "Todo",
+    IN_PROGRESS: "In Progress",
+    DONE: "Done",
+  };
 
   const priorityBadgeClasses: Record<Task["priority"], string> = {
-    HIGH:
-      "bg-rose-500/10 text-rose-300 border border-rose-500/40 shadow-[0_0_14px_rgba(244,63,94,0.35)]",
-    MEDIUM:
-      "bg-amber-500/10 text-amber-300 border border-amber-500/40 shadow-[0_0_14px_rgba(245,158,11,0.25)]",
-    LOW: "bg-slate-800/80 text-slate-200 border border-slate-700",
+    HIGH: "bg-orange-100 text-orange-800 border border-orange-300",
+    MEDIUM: "bg-orange-100 text-orange-800 border border-orange-300",
+    LOW: "bg-green-100 text-green-800 border border-green-300",
   };
 
   const priorityLabels: Record<Task["priority"], string> = {
@@ -171,253 +157,230 @@ export default function ProjectDetailPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <Link
-        href="/"
-        className="text-xs text-slate-400 hover:text-slate-100 transition-colors mb-1 inline-block"
-      >
-        &larr; Back to projects
-      </Link>
-
-      <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row items-start justify-between gap-6 shadow-[0_22px_60px_rgba(0,0,0,0.9)]">
-        <div>
-          <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-            Projects / <span className="text-slate-200">{project.name}</span>
+    <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="mb-6">
+          <div className="text-sm text-gray-500 mb-2">
+            Projects / {project.name}
           </div>
-          <h1 className="text-2xl font-semibold mb-1 text-slate-50">
-            {project.name}
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{project.name}</h1>
           {project.description && (
-            <p className="text-slate-400 text-sm">{project.description}</p>
+            <p className="text-gray-600 mb-2">{project.description}</p>
           )}
-          <div className="flex gap-4 mt-4 text-sm">
-            <span className="bg-slate-800 text-slate-300 px-3 py-1 rounded-full text-xs">
-              {todoCount} To Do
-            </span>
-            <span className="bg-sky-500/10 text-sky-300 px-3 py-1 rounded-full text-xs">
-              {inProgressCount} In Progress
-            </span>
-            <span className="bg-emerald-500/10 text-emerald-300 px-3 py-1 rounded-full text-xs">
-              {doneCount} Done
-            </span>
+          <div className="text-sm text-gray-500 mb-4">
+            Created on: {new Date(project.createdAt).toISOString().split("T")[0]}
+          </div>
+          <div className="flex gap-2 mb-4">
+            <Link
+              href="/"
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm"
+            >
+              « Back to Projects
+            </Link>
+            <button
+              onClick={() => setProjectModalOpen(true)}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm"
+            >
+              Edit Project
+            </button>
+            <button
+              onClick={() => setDeleteConfirmOpen(true)}
+              className="px-4 py-2 bg-[#2a869a] text-white rounded hover:bg-[#216e7e] text-sm"
+            >
+              Delete Project
+            </button>
           </div>
         </div>
-        <div className="flex gap-3">
-          <Link
-            href="/"
-            className="px-4 py-2 rounded-xl border border-slate-700 bg-slate-900 text-xs text-slate-200 hover:bg-slate-800"
-          >
-            Back to Projects
-          </Link>
-          <button
-            onClick={() => {
-              setEditingTask(null);
-              setTaskModalOpen(true);
-            }}
-            className="px-4 py-2 rounded-xl bg-primary text-white text-xs hover:bg-primary-hover shadow-[0_0_18px_rgba(56,189,248,0.55)]"
-          >
-            + New Task
-          </button>
-        </div>
-      </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-danger px-4 py-3 rounded-lg mb-4">
-          {error}
-          <button
-            onClick={() => setError(null)}
-            className="ml-2 underline text-sm"
-          >
-            dismiss
-          </button>
-        </div>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-50">Tasks</h2>
-          </div>
-
-          <TaskFilters filters={filters} onChange={setFilters} />
-
-          {tasks.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <p>No tasks found.</p>
-            </div>
-          ) : (
-            <>
-          <div className="overflow-x-auto bg-slate-950/80 border border-slate-800 rounded-2xl">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-900/80 border-b border-slate-800">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium text-slate-400">
-                    Title
-                  </th>
-                  <th className="text-left px-4 py-2 font-medium text-slate-400">
-                    Status
-                  </th>
-                  <th className="text-left px-4 py-2 font-medium text-slate-400">
-                    Priority
-                  </th>
-                  <th className="text-left px-4 py-2 font-medium text-slate-400">
-                    Due Date
-                  </th>
-                  <th className="text-left px-4 py-2 font-medium text-slate-400">
-                    Updated
-                  </th>
-                  <th className="text-right px-4 py-2 font-medium text-slate-400">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {tasks.map((task) => (
-                  <tr key={task.id} className="border-b border-slate-800 last:border-0">
-                    <td className="px-4 py-2">
-                      <div className="font-medium text-slate-100">
-                        {task.title}
-                      </div>
-                      {task.description && (
-                        <div className="text-xs text-slate-400">
-                          {task.description}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      <select
-                        value={task.status}
-                        onChange={(e) =>
-                          handleStatusChange(
-                            task.id,
-                            e.target.value as Task["status"]
-                          )
-                        }
-                        className="text-xs border border-slate-700 rounded px-2 py-1 bg-slate-900 text-slate-100"
-                      >
-                        <option value="TODO">Todo</option>
-                        <option value="IN_PROGRESS">In Progress</option>
-                        <option value="DONE">Done</option>
-                      </select>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`inline-flex items-center justify-center px-3 py-0.5 rounded-full text-[11px] font-medium ${priorityBadgeClasses[task.priority]}`}
-                      >
-                        {priorityLabels[task.priority]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2">
-                      {task.dueDate
-                        ? new Date(task.dueDate).toLocaleDateString()
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-2">
-                      {task.updatedAt
-                        ? new Date(task.updatedAt).toLocaleDateString()
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-2 text-right space-x-2">
-                      <button
-                        onClick={() => {
-                          setEditingTask(task);
-                          setTaskModalOpen(true);
-                        }}
-                        className="px-3 py-1 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-100 hover:bg-slate-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTask(task.id)}
-                        className="px-3 py-1 text-xs rounded-lg bg-danger text-white hover:bg-danger-hover"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 text-sm">
-              <span className="text-muted">
-                Page {tasksPage} of {totalPages} ({tasksTotal} tasks)
-              </span>
-              <div className="flex gap-2">
+        <div className="border-t pt-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Tasks »</h2>
                 <button
-                  disabled={tasksPage === 1}
-                  onClick={() => setTasksPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1 border border-slate-700 rounded-lg disabled:opacity-50 bg-slate-900 text-slate-100 hover:bg-slate-800"
+                  onClick={() => {
+                    setEditingTask(null);
+                    setTaskModalOpen(true);
+                  }}
+                  className="px-4 py-2 bg-[#2a869a] text-white rounded hover:bg-[#216e7e] text-sm"
                 >
-                  Previous
-                </button>
-                <button
-                  disabled={tasksPage === totalPages}
-                  onClick={() =>
-                    setTasksPage((p) => Math.min(totalPages, p + 1))
-                  }
-                  className="px-3 py-1 border border-slate-700 rounded-lg disabled:opacity-50 bg-slate-900 text-slate-100 hover:bg-slate-800"
-                >
-                  Next
+                  + New Task
                 </button>
               </div>
-            </div>
-          )}
-        </>
-      )}
-        </div>
 
-        <div className="space-y-4">
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-5">
-            <h3 className="text-sm font-semibold text-slate-50 mb-4">
-              Project status
-            </h3>
-            <div className="space-y-3 text-xs">
-              <div>
-                <div className="flex justify-between mb-1 text-slate-400">
-                  <span>To Do</span>
-                  <span>{todoCount}</span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-slate-500"
-                    style={{ width: `${(todoCount / totalForBars) * 100}%` }}
-                  />
-                </div>
+              <div className="flex gap-4 mb-4">
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  className="border border-gray-300 rounded px-3 py-1 text-sm"
+                >
+                  <option value="All">Status: All</option>
+                  <option value="TODO">Todo</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="DONE">Done</option>
+                </select>
+                <select
+                  value={filters.priority}
+                  onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+                  className="border border-gray-300 rounded px-3 py-1 text-sm"
+                >
+                  <option value="All">Priority: All</option>
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                </select>
+                <select
+                  value={filters.sortBy}
+                  onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
+                  className="border border-gray-300 rounded px-3 py-1 text-sm"
+                >
+                  <option value="createdAt">Sort: Created (newest first)</option>
+                  <option value="dueDate">Sort: Due Date</option>
+                  <option value="updatedAt">Sort: Updated</option>
+                </select>
               </div>
-              <div>
-                <div className="flex justify-between mb-1 text-slate-400">
-                  <span>In Progress</span>
-                  <span>{inProgressCount}</span>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
+                  {error}
                 </div>
-                <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-sky-400"
-                    style={{ width: `${(inProgressCount / totalForBars) * 100}%` }}
-                  />
+              )}
+
+              {tasks.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p>No tasks found.</p>
                 </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-1 text-slate-400">
-                  <span>Done</span>
-                  <span>{doneCount}</span>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 px-4 font-semibold text-gray-700">Title</th>
+                        <th className="text-left py-2 px-4 font-semibold text-gray-700">Status</th>
+                        <th className="text-left py-2 px-4 font-semibold text-gray-700">Priority</th>
+                        <th className="text-left py-2 px-4 font-semibold text-gray-700">Due Date</th>
+                        <th className="text-left py-2 px-4 font-semibold text-gray-700">Updated</th>
+                        <th className="text-left py-2 px-4 font-semibold text-gray-700">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tasks.map((task) => (
+                        <tr key={task.id} className="border-b">
+                          <td className="py-2 px-4">
+                            <div className="font-medium text-gray-900">{task.title}</div>
+                            {task.description && (
+                              <div className="text-sm text-gray-500">{task.description}</div>
+                            )}
+                          </td>
+                          <td className="py-2 px-4">
+                            <span
+                              className={`inline-block px-2 py-1 rounded text-xs font-medium ${statusBadgeClasses[task.status]}`}
+                            >
+                              {statusLabels[task.status]}
+                            </span>
+                          </td>
+                          <td className="py-2 px-4">
+                            <span
+                              className={`inline-block px-2 py-1 rounded text-xs font-medium ${priorityBadgeClasses[task.priority]}`}
+                            >
+                              {priorityLabels[task.priority]}
+                            </span>
+                          </td>
+                          <td className="py-2 px-4 text-gray-700">
+                            {task.dueDate
+                              ? new Date(task.dueDate).toISOString().split("T")[0]
+                              : "-"}
+                          </td>
+                          <td className="py-2 px-4 text-gray-700">
+                            {task.updatedAt
+                              ? new Date(task.updatedAt).toISOString().split("T")[0]
+                              : "-"}
+                          </td>
+                          <td className="py-2 px-4">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditingTask(task);
+                                  setTaskModalOpen(true);
+                                }}
+                                className="px-3 py-1 bg-[#2a869a] text-white rounded hover:bg-[#216e7e] text-xs"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-emerald-400"
-                    style={{ width: `${(doneCount / totalForBars) * 100}%` }}
-                  />
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-white border border-gray-200 rounded-lg p-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">
+                Project status
+              </h3>
+              <div className="space-y-3 text-xs">
+                <div>
+                  <div className="flex justify-between mb-1 text-gray-600">
+                    <span>To Do</span>
+                    <span>{tasks.filter((t) => t.status === "TODO").length}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gray-400"
+                      style={{ 
+                        width: `${tasks.length > 0 ? (tasks.filter((t) => t.status === "TODO").length / tasks.length) * 100 : 0}%` 
+                      }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between mb-1 text-gray-600">
+                    <span>In Progress</span>
+                    <span>{tasks.filter((t) => t.status === "IN_PROGRESS").length}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-blue-500"
+                      style={{ 
+                        width: `${tasks.length > 0 ? (tasks.filter((t) => t.status === "IN_PROGRESS").length / tasks.length) * 100 : 0}%` 
+                      }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between mb-1 text-gray-600">
+                    <span>Done</span>
+                    <span>{tasks.filter((t) => t.status === "DONE").length}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-green-500"
+                      style={{ 
+                        width: `${tasks.length > 0 ? (tasks.filter((t) => t.status === "DONE").length / tasks.length) * 100 : 0}%` 
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-5">
-            <h3 className="text-sm font-semibold text-slate-50 mb-3">
-              Activity
-            </h3>
-            <ActivityLog projectId={id} />
+            <div className="bg-white border border-gray-200 rounded-lg p-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                Activity
+              </h3>
+              <ActivityLog projectId={id} />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -432,6 +395,48 @@ export default function ProjectDetailPage() {
           }}
           onSaved={handleTaskSaved}
         />
+      )}
+
+      {projectModalOpen && (
+        <ProjectModal
+          project={project}
+          onClose={() => setProjectModalOpen(false)}
+          onSaved={handleProjectSaved}
+        />
+      )}
+
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Confirm Delete</h3>
+              <button
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </div>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete the project &apos;{project.name}&apos;? This will
+              also delete all tasks related to this project. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteProject}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       action: entry.action,
       message: entry.message,
       createdAt: entry.createdAt,
-      projectName: entry.project.name,
+      projectName: entry.project?.name || null,
     }));
 
     return NextResponse.json({ items: mapped, total, page, pageSize });

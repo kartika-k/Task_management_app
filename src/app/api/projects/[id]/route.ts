@@ -74,6 +74,28 @@ export async function PATCH(
       data: parsed.data,
     });
 
+    const changedFields: string[] = [];
+    if (parsed.data.name && parsed.data.name !== existing.name) {
+      changedFields.push(`Name: "${existing.name}" → "${parsed.data.name}"`);
+    }
+    if (parsed.data.description !== undefined && parsed.data.description !== existing.description) {
+      const oldDesc = existing.description || "(empty)";
+      const newDesc = parsed.data.description || "(empty)";
+      changedFields.push(`Description: "${oldDesc.substring(0, 30)}" → "${newDesc.substring(0, 30)}"`);
+    }
+    
+    const message = changedFields.length > 0
+      ? `Project "${project.name}" updated - ${changedFields.join("; ")}`
+      : `Project "${project.name}" updated`;
+    
+    await prisma.activityLog.create({
+      data: {
+        projectId: id,
+        action: "PROJECT_UPDATED",
+        message,
+      },
+    });
+
     return NextResponse.json(project);
   } catch (error) {
     console.error("Failed to update project:", error);
@@ -105,6 +127,21 @@ export async function DELETE(
         { error: "Forbidden: only the project owner can delete this project" },
         { status: 403 }
       );
+    }
+    const projectName = existing.name;
+    const projectDescription = existing.description ? `Description: ${existing.description.substring(0, 50)}${existing.description.length > 50 ? '...' : ''}` : '';
+    const details = projectDescription ? `(${projectDescription})` : '';
+    
+    try {
+      await prisma.activityLog.create({
+        data: {
+          projectId: id,
+          action: "PROJECT_DELETED",
+          message: `Project "${projectName}" deleted ${details}`,
+        },
+      });
+    } catch (logError) {
+      console.error("Failed to create deletion log:", logError);
     }
 
     await prisma.project.delete({ where: { id } });

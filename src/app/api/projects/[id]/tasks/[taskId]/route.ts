@@ -86,20 +86,24 @@ export async function PATCH(
     });
 
     const changedFields: string[] = [];
+    const details: string[] = [];
+    
     if (parsed.data.title && parsed.data.title !== existing.title) {
-      changedFields.push("title");
+      changedFields.push(`Title: "${existing.title}" → "${task.title}"`);
     }
     if (
       parsed.data.description !== undefined &&
       parsed.data.description !== existing.description
     ) {
-      changedFields.push("description");
+      const oldDesc = existing.description || "(empty)";
+      const newDesc = parsed.data.description || "(empty)";
+      changedFields.push(`Description: "${oldDesc.substring(0, 30)}" → "${newDesc.substring(0, 30)}"`);
     }
     if (parsed.data.status && parsed.data.status !== existing.status) {
-      changedFields.push("status");
+      changedFields.push(`Status: ${existing.status} → ${task.status}`);
     }
     if (parsed.data.priority && parsed.data.priority !== existing.priority) {
-      changedFields.push("priority");
+      changedFields.push(`Priority: ${existing.priority} → ${task.priority}`);
     }
     if (parsed.data.dueDate !== undefined) {
       const nextDueDate = parsed.data.dueDate
@@ -112,8 +116,16 @@ export async function PATCH(
           nextDueDate &&
           existing.dueDate.getTime() !== nextDueDate.getTime())
       ) {
-        changedFields.push("due date");
+        const oldDate = existing.dueDate ? new Date(existing.dueDate).toLocaleDateString() : "(none)";
+        const newDate = nextDueDate ? new Date(nextDueDate).toLocaleDateString() : "(none)";
+        changedFields.push(`Due Date: ${oldDate} → ${newDate}`);
       }
+    }
+
+    details.push(`Status: ${task.status}`);
+    details.push(`Priority: ${task.priority}`);
+    if (task.dueDate) {
+      details.push(`Due Date: ${new Date(task.dueDate).toLocaleDateString()}`);
     }
 
     if (changedFields.length > 0) {
@@ -122,7 +134,7 @@ export async function PATCH(
           projectId,
           taskId,
           action: "TASK_UPDATED",
-          message: `Task "${task.title}" updated (${changedFields.join(", ")})`,
+          message: `Task "${task.title}" updated - ${changedFields.join("; ")}. Current: ${details.join(", ")}`,
         },
       });
     }
@@ -165,16 +177,26 @@ export async function DELETE(
       );
     }
 
-    await prisma.task.delete({ where: { id: taskId } });
+    const details: string[] = [];
+    details.push(`Status: ${existing.status}`);
+    details.push(`Priority: ${existing.priority}`);
+    if (existing.dueDate) {
+      details.push(`Due Date: ${new Date(existing.dueDate).toLocaleDateString()}`);
+    }
+    if (existing.description) {
+      details.push(`Description: ${existing.description.substring(0, 50)}${existing.description.length > 50 ? '...' : ''}`);
+    }
 
     await prisma.activityLog.create({
       data: {
         projectId,
         taskId,
         action: "TASK_DELETED",
-        message: `Task "${existing.title}" deleted`,
+        message: `Task "${existing.title}" deleted (${details.join(", ")})`,
       },
     });
+
+    await prisma.task.delete({ where: { id: taskId } });
 
     return NextResponse.json({ message: "Task deleted" });
   } catch (error) {

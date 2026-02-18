@@ -143,13 +143,22 @@ export async function POST(
       },
     });
 
-    //  activity log entry
+    const details: string[] = [];
+    details.push(`Status: ${task.status}`);
+    details.push(`Priority: ${task.priority}`);
+    if (task.dueDate) {
+      details.push(`Due Date: ${new Date(task.dueDate).toLocaleDateString()}`);
+    }
+    if (task.description) {
+      details.push(`Description: ${task.description.substring(0, 50)}${task.description.length > 50 ? '...' : ''}`);
+    }
+    
     await prisma.activityLog.create({
       data: {
         projectId,
         taskId: task.id,
         action: "TASK_CREATED",
-        message: `Task "${task.title}" created`,
+        message: `Task "${task.title}" created (${details.join(", ")})`,
       },
     });
 

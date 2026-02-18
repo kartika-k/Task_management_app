@@ -58,6 +58,23 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Create detailed activity log entry
+    const details: string[] = [];
+    if (project.description) {
+      details.push(`Description: ${project.description.substring(0, 50)}${project.description.length > 50 ? '...' : ''}`);
+    }
+    const message = details.length > 0 
+      ? `Project "${project.name}" created (${details.join(", ")})`
+      : `Project "${project.name}" created`;
+    
+    await prisma.activityLog.create({
+      data: {
+        projectId: project.id,
+        action: "PROJECT_CREATED",
+        message,
+      },
+    });
+
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
     console.error("Failed to create project:", error);

@@ -45,7 +45,7 @@ export default function ProjectModal({ project, onClose, onSaved }: Props) {
         if (data.details) {
           setErrors(data.details);
         } else {
-          setApiError(data.error || "Something went wrong");
+          setApiError(isEdit ? "Could not update project. Please try again." : data.error || "Something went wrong");
         }
         return;
       }
@@ -59,77 +59,80 @@ export default function ProjectModal({ project, onClose, onSaved }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="relative w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950/90 shadow-[0_22px_60px_rgba(0,0,0,0.95)]">
-        <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-70 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.25),transparent_55%)]" />
-        <div className="relative p-6">
-          <h2 className="text-lg font-semibold mb-1 text-slate-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">
             {isEdit ? "Edit Project" : "New Project"}
           </h2>
-          <p className="text-xs text-slate-400 mb-4">
-            Give your project a name and an optional short description.
-          </p>
-
-          {apiError && (
-            <div className="bg-red-500/10 border border-red-500/40 text-danger px-3 py-2 rounded mb-4 text-xs">
-              {apiError}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label className="block text-xs font-medium mb-1 text-slate-300">
-                Name <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-900 text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
-                placeholder="Project name"
-                autoFocus
-              />
-              {errors.name && (
-                <p className="text-danger text-xs mt-1">{errors.name[0]}</p>
-              )}
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-xs font-medium mb-1 text-slate-300">
-                Description
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-900 text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
-                rows={3}
-                placeholder="Optional description"
-              />
-              {errors.description && (
-                <p className="text-danger text-xs mt-1">
-                  {errors.description[0]}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-3 justify-end pt-1">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-xs border border-slate-700 text-slate-200 rounded-lg hover:bg-slate-900 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-2 text-xs bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50 shadow-[0_0_18px_rgba(56,189,248,0.6)]"
-              >
-                {saving ? "Saving..." : isEdit ? "Update" : "Create"}
-              </button>
-            </div>
-          </form>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            ×
+          </button>
         </div>
+
+        {apiError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded mb-4 text-sm flex items-center gap-2">
+            <span>⚠</span>
+            <span>{apiError}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1 text-gray-700">
+              Project Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2a869a] focus:border-[#2a869a]"
+              placeholder="Enter project name"
+              autoFocus
+            />
+            {errors.name && (
+              <p className="text-red-600 text-xs mt-1">{errors.name[0]}</p>
+            )}
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-1 text-gray-700">
+              Description
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2a869a] focus:border-[#2a869a]"
+              rows={3}
+              placeholder="Enter project description"
+            />
+            {errors.description && (
+              <p className="text-red-600 text-xs mt-1">
+                {errors.description[0]}
+              </p>
+            )}
+          </div>
+
+          <div className="flex gap-3 justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 text-sm bg-[#2a869a] text-white rounded hover:bg-[#216e7e] disabled:opacity-50"
+            >
+              {saving ? "Saving..." : isEdit ? "Save Changes" : "Create"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

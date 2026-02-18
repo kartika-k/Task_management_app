@@ -31,7 +31,7 @@ export default function ActivityLog({ projectId }: Props) {
 
   if (loading) {
     return (
-      <div className="text-sm text-muted">
+      <div className="text-sm text-gray-500">
         Loading activity...
       </div>
     );
@@ -39,7 +39,7 @@ export default function ActivityLog({ projectId }: Props) {
 
   if (error) {
     return (
-      <div className="text-sm text-danger">
+      <div className="text-sm text-red-600">
         {error}
       </div>
     );
@@ -47,7 +47,7 @@ export default function ActivityLog({ projectId }: Props) {
 
   if (items.length === 0) {
     return (
-      <div className="text-sm text-muted">
+      <div className="text-sm text-gray-500">
         No recent activity yet.
       </div>
     );
@@ -56,9 +56,9 @@ export default function ActivityLog({ projectId }: Props) {
   return (
     <ul className="space-y-2 text-sm">
       {items.map((entry) => (
-        <li key={entry.id} className="flex justify-between gap-3">
-          <span className="text-foreground">{entry.message}</span>
-          <span className="text-muted text-xs whitespace-nowrap">
+        <li key={entry.id} className="flex justify-between gap-3 py-2 border-b border-gray-100 last:border-0">
+          <span className="text-gray-900">{entry.message}</span>
+          <span className="text-gray-500 text-xs whitespace-nowrap">
             {new Date(entry.createdAt).toLocaleString()}
           </span>
         </li>
